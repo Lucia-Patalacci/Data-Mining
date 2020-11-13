@@ -1,0 +1,1033 @@
+---
+title: "Unsupervised Learning: Clustering Methods"
+author: "Lucia Patalacci"
+date: "30/5/2018"
+output:
+  html_document: default
+  pdf_document: default
+---
+```{bash}
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### ANALISI *"CLUSTERING"*
+Il presente documento ha lo scopo di porre a confronto alcuni metodi di apprendimento non supervisionato di tipo **Clustering** **Gerarchici** e **Non Gerarchici**, con l'obiettivo di verificare se e come sono in grado di scoprire la presenza di sottogruppi in quattro differenti *set* di dati osservati.
+
+Le tecniche di classificazione hanno lo scopo di ripartire i dati osservati in gruppi distinti in modo che le osservazioni entro ciascun gruppo siano similari mentre quelle situate in gruppi diversi sono sensibilmente distanti tra di loro.
+
+
+Esistono molti metodi di classificazione tra i quali, sono stati qui applicati i seguenti:
+
+a. **Metodi Gerarchici**: non si conosce *a priori* il numero di gruppi
+
+
+- Agglomerativi (o *bottom-up*): da n gruppi (con n il numero delle osservazioni) si raggruppano progressivamente le osservazioni più simili in sottogruppi, poi si raggruppano i sottogruppi in un numero sempre piu inferiore di gruppi, fino ad ottenere un gruppo contenente tutte le unità.
+
+- Divisivi (o *bottom-down*): da un solo gruppo che contiene tutte le n osservazioni, si procede alla progressiva suddivisione delle unità meno simili tra di loro fino a ripartirle in n gruppi composti di una sola unità (il metodo non è stato applicato nell'analisi che segue).
+
+La logica di classificazione si basa sul calcolo di una misura di prossimità (indici di distanza se le variabili sono quantitative o indici di similarità in caso di varibili qualitative) fra le n osservazioni del *data-set*.
+
+In base a come viene calcolata la distanza tra le unità, i metodi gerarchici più comuni sono: *Single Link, Complete Link, Group Average, Ward*.
+
+
+b. **Metodi Non Gerarchici**:
+
+
+- K-Means: il *data-set* è suddiviso in K gruppi distinti, dove K è fissato *a priori*.
+L'algoritmo K-Means assegna ciascuna osservazione al k-esimo cluster in base al criterio di minimizzazione della distanza infragruppo, ovvero della devianza interna (es.quadrato della distanza Euclidea).
+
+
+- Pam (Partitioning Around Medoids): a differenza del K-Means, i centroidi dei cluster sono osservazioni effettive (*medoids*) e non le medie intragruppo (*centroidi*).
+
+
+Nell'analisi che segue, la **validazione** di ciascun metodo applicato si basa sul calcolo dell'**indice di entropia** per ciascun gruppo stimato (i = 1,2,3), rispetto al gruppo vero (j = A,B,C): l'indice è pari a 0 quando tutte le unità del *data set* sono "concentrate"" in un solo gruppo (il cluster "vero") mentre cresce all'aumentare della dispersione delle unità tra piu gruppi.
+
+Per i metodi non gerarchici si è calcolata anche l'informazione **silhouette**: il cui valore varia nell'intervallo [-1 e 1]: aumenta al decrescere delle distanze intra-cluster e diminuisce al decrescere delle distanze inter-cluster.
+
+
+-----------
+```{r, echo=FALSE}
+palette(rainbow(3))
+```
+
+## 1.CLUSTER BEN SEPARATI
+```{r clussep, echo=FALSE}
+set.seed(22)
+n=20; scale=1;
+      mx=0; my=0; 
+      x=rnorm(n)*scale+mx
+      y=rnorm(n)*scale+my
+      mx=8; my=0;
+      x=c(x,(rnorm(n)*scale+mx))
+      y=c(y,(rnorm(n)*scale+my))
+      mx=4; my=8;
+      x=c(x,(rnorm(n)*scale+mx))
+      y=c(y,(rnorm(n)*scale+my))
+mat_well<-cbind(c(rep(1,n),rep(2,n),rep(3,n)),x,y)
+colnames(mat_well)<-c('G.vero','x','y')
+plot(x,y,pch=19,col=mat_well[,1])
+mat_welldf<-data.frame(mat_well)
+
+#dissimilarity matrix
+v<-mat_welldf[,2:3]
+vd<- dist(v)
+```
+
+### 1.1 METODI GERARCHICI
+
+#### 1.1.1 Single Link
+```{r single}
+single<-hclust(vd, method = "single", members=NULL)
+plot(single, hang = -1, cex = 0.6,xlab="",sub="", main = "Single Linkage")
+singlLCut <- cutree(single, 3)
+
+#confusion matrix
+CMsingle<-(table(mat_welldf$G.vero,singlLCut,dnn=c("G Vero","G stimato")))
+
+#Indice entropia
+library(entropy)
+e1<-entropy(CMsingle[1,], method = "ML")
+e2<-entropy(CMsingle[2,], method = "ML")
+e3<-entropy(CMsingle[3,], method = "ML")
+Entropia<-c(e1,e2,e3)
+em<-mean(Entropia)
+```
+
+```{r singleresult, echo=FALSE}
+Table1 <-cbind(CMsingle,Entropia)
+Table1.1<-rbind(Table1,em)
+colnames(Table1.1)<-c("G^1","G^2","G^3","Entropia")
+rownames(Table1.1)<-c("GruppoA","GruppoB","GruppoC","Entropia Media")
+print(Table1.1)
+```
+
+#### 1.1.2 Complete Link
+```{r complete}
+compL<-hclust(vd, method = "complete", members=NULL)
+plot(compL, hang = -1, cex = 0.6,xlab="",sub="", main = "Complete Linkage")
+compLLCut <- cutree(compL, 3)
+
+#confusion matrix
+CMcomplete<-table(mat_welldf$G.vero,compLLCut,dnn=c("G Vero","G stimato"))
+
+#Indice entropia
+ec1<-entropy(CMcomplete[1,], method = "ML")
+ec2<-entropy(CMcomplete[2,], method = "ML")
+ec3<-entropy(CMcomplete[3,], method = "ML")
+Entropia<-c(ec1,ec2,ec3)
+ecm<-mean(Entropia)
+```
+
+```{r completeresult, echo=FALSE}
+Table1 <-cbind(CMcomplete,Entropia)
+Table1.1<-rbind(Table1,ecm)
+colnames(Table1.1)<-c("G^1","G^2","G^3","Entropia")
+rownames(Table1.1)<-c("GruppoA","GruppoB","GruppoC","Entropia Media")
+print(Table1.1)
+```
+
+#### 1.1.3 Ward
+```{r ward}
+Ward<-hclust(vd, method = "ward.D", members=NULL)
+plot(Ward, hang = -1, cex = 0.6,xlab="",sub="", main = "Ward Linkage")
+WardCut <- cutree(Ward, 3)
+
+#confusion matrix
+CMWard<-table(mat_welldf$G.vero,WardCut,dnn=c("G Vero","G stimato"))
+
+#Indice entropia
+ew1<-entropy(CMWard[1,], method = "ML")
+ew2<-entropy(CMWard[2,], method = "ML")
+ew3<-entropy(CMWard[3,], method = "ML")
+Entropia<-c(ew1,ew2,ew3)
+ewm<-mean(Entropia)
+```
+
+```{r cwardresult, echo=FALSE}
+Table1 <-cbind(CMWard,Entropia)
+Table1.1<-rbind(Table1,ewm)
+colnames(Table1.1)<-c("G^1","G^2","G^3","Entropia")
+rownames(Table1.1)<-c("GruppoA","GruppoB","GruppoC","Entropia Media")
+print(Table1.1)
+```
+
+#### 1.1.4 Group Average
+```{r gavg}
+average<-hclust(vd, method = "average", members=NULL)
+plot(average, hang = -1, cex = 0.6,xlab="",sub="", main = "Average Linkage")
+avgCut <- cutree(average, 3)
+
+#confusion matrix
+CMavg<-table(mat_welldf$G.vero,avgCut,dnn=c("G Vero","G stimato"))
+
+#Indice entropia
+ea1<-entropy(CMavg[1,], method = "ML")
+ea2<-entropy(CMavg[2,], method = "ML")
+ea3<-entropy(CMavg[3,], method = "ML")
+Entropia<-c(ea1,ea2,ea3)
+eam<-mean(Entropia)
+```
+
+```{r avgresult, echo=FALSE}
+Table1 <-cbind(CMavg,Entropia)
+Table1.1<-rbind(Table1,eam)
+colnames(Table1.1)<-c("G^1","G^2","G^3","Entropia")
+rownames(Table1.1)<-c("GruppoA","GruppoB","GruppoC","Entropia Media")
+print(Table1.1)
+```
+
+
+### 1.2 METODI NON GERARCHICI
+
+#### 1.2.1 Criterio K-Means: k pari a 3 e  silhouette
+```{r kmeans}
+library (cluster)
+set.seed(22)
+kmeans_clus3<-kmeans(vd,3)
+
+### criterio silhouette
+dista2<-vd^2 # sum((x_i - y_i)^2)
+plot(silhouette(kmeans_clus3$cluster,dista2), col = c("blue","red","green"), main="Silhouette K-means K=3")
+
+#confusion matrix
+CMKM<-table(mat_welldf$G.vero,kmeans_clus3$cluster,dnn=c("G Vero","G stimato"))
+
+#Indice entropia
+e3k1<-entropy(CMKM[1,], method = "ML")
+e3k2<-entropy(CMKM[2,], method = "ML")
+e3k3<-entropy(CMKM[3,], method = "ML")
+Entropia<-c(e3k1,e3k2,e3k3)
+e3km<-mean(Entropia)
+```
+
+```{r kmeans3result, echo=FALSE}
+Table1 <-cbind(CMKM,Entropia)
+Table1.1<-rbind(Table1,e3km)
+colnames(Table1.1)<-c("G^1","G^2","G^3","Entropia")
+rownames(Table1.1)<-c("GruppoA","GruppoB","GruppoC","Entropia Media")
+print(Table1.1)
+```
+
+#### 1.2.2 Criterio K-Means: scelta del numero dei gruppi e silhouette
+```{r kmeansk}
+library(fpc)
+set.seed(22)
+kmeans_clusk<-kmeansruns(vd, krange=2:7,iter.max=1000,criterion='asw')
+plot(silhouette(kmeans_clusk$cluster,dista2),col = c("blue","red","green"),main="Silhouette K-means")
+
+#confusion matrix
+CMKK<-table(mat_welldf$G.vero,kmeans_clusk$cluster,dnn=c("G Vero","G stimato"))
+
+#Indice entropia
+ekk1<-entropy(CMKK[1,], method = "ML")
+ekk2<-entropy(CMKK[2,], method = "ML")
+ekk3<-entropy(CMKK[3,], method = "ML")
+Entropia<-c(ekk1,ekk2,ekk3)
+ekkm<-mean(Entropia)
+```
+
+```{r kmeanskresult, echo=FALSE}
+Table1 <-cbind(CMKK,Entropia)
+Table1.1<-rbind(Table1,ekkm)
+colnames(Table1.1)<-c("G^1","G^2","G^3","Entropia")
+rownames(Table1.1)<-c("GruppoA","GruppoB","GruppoC","Entropia Media")
+print(Table1.1)
+```
+
+#### 1.2.2 Criterio Pam: k pari a 3 e silhouette
+```{r pam3}
+library(fpc)
+set.seed(1806)
+pam3<-pam(vd, 3, stand=T,trace=1)
+plot(silhouette(pam3$cluster,dista2), col = c("blue","red","green"), main="Silhouette Pam K= 3")
+
+#confusion matrix
+CMPAM3<-table(mat_welldf$G.vero,pam3$cluster,dnn=c("G Vero","G stimato"))
+
+#Indice entropia
+e3p1<-entropy(CMPAM3[1,], method = "ML")
+e3p2<-entropy(CMPAM3[2,], method = "ML")
+e3p3<-entropy(CMPAM3[3,], method = "ML")
+Entropia<-c(e3p1,e3p2,e3p3)
+e3pm<-mean(Entropia)
+```
+
+```{r pam3result, echo=FALSE}
+Table1 <-cbind(CMPAM3,Entropia)
+Table1.1<-rbind(Table1,e3pm)
+colnames(Table1.1)<-c("G^1","G^2","G^3","Entropia")
+rownames(Table1.1)<-c("GruppoA","GruppoB","GruppoC","Entropia Media")
+print(Table1.1)
+```
+
+#### 1.2.2 Criterio Pam: selezione numero cluster k e Silhouette
+```{r pamk, echo=FALSE}
+set.seed(18)
+pam_k<-pamk(vd, scaling=T,krange=2:6, criterion="asw")
+plot(silhouette(pam_k$pamobject$clustering,dista2), col = c("blue","red","green"), main="Silhouette Pam")
+
+#confusion matrix
+CMPAM_K<-table(mat_welldf$G.vero,pam_k$pamobject$clustering,dnn=c("G Vero","G stimato"))
+
+#Indice entropia
+library(entropy)
+ekp1<-entropy(CMPAM_K[1,], method = "ML")
+ekp2<-entropy(CMPAM_K[2,], method = "ML")
+ekp3<-entropy(CMPAM_K[3,], method = "ML")
+Entropia<-c(ekp1,ekp2,ekp3)
+ekpm<-mean(Entropia)
+```
+
+```{r pamkresult, echo=FALSE}
+Table1 <-cbind(CMPAM_K,Entropia)
+Table1.1<-rbind(Table1,ekpm)
+colnames(Table1.1)<-c("G^1","G^2","G^3","Entropia")
+rownames(Table1.1)<-c("GruppoA","GruppoB","GruppoC","Entropia Media")
+print(Table1.1)
+```
+
+
+#### 1.3 Confronto fra risultati: metodi gerarchici, K-Means, Pam
+
+I diversi metodi di classificazione gerarchica, nel caso di *data-set* in cui le osservazioni sono distintamente classificabili in gruppi (le unità appartengono univocamente ad un solo gruppo), conducono alla corretta assegnazione delle osservazioni al gruppo vero.
+
+I dendrogrammi rappresentati interpretano chiaramente quali unità sono sensibilmente dissimili all'aumentare del valore dell'asse delle ascisse. 
+
+L'indice medio di entropia calcolato sui quattro metodi di classificazione gerarchica è pari a zero.
+
+Analogamente, i criteri di classificazione non gerarchica K-Means e Pam, con la scelta arbitraria o meno del valore K, classificano correttamente le unità nei gruppi veri del *data-set* assegnato.
+L'indice medio di entropia calcolato sui due criteri di classificazione non gerarchica è pari a zero e l'indice di silhouette medio è di 0,91 per entrambi i criteri utilizzati.
+
+--------------
+
+### 2.CLUSTER POCO SEPARATI
+```{r cluspsep, echo=FALSE}
+set.seed(12)
+ n=50; scale=.8;
+      mx=0; my=0; 
+      x=rnorm(n)*scale+mx
+      y=rnorm(n)*scale+my
+      mx=3; my=0; 
+      x=c(x,(rnorm(n)*scale+mx))
+      y=c(y,(rnorm(n)*scale+my))
+      mx=1; my=2; 
+      x=c(x,(rnorm(n)*scale+mx))
+      y=c(y,(rnorm(n)*scale+my))
+mat_poor<-cbind(c(rep(1,n),rep(2,n),rep(3,n)),x,y)
+colnames(mat_poor)<-c('G-vero','x','y')
+plot(x,y,pch=19,col=mat_poor[,1])
+mat_poordf<-data.frame(mat_poor)
+
+#dissimilarity matrix
+vp<-mat_poor[,2:3]
+dp<- dist(vp, method = "euclidean")
+```
+
+### 2.1 METODI GERARCHICI
+
+#### 2.1.1 Single Link
+```{r 2single}
+single<-hclust(dp, method = "single", members=NULL)
+single
+plot(single, hang = -1, cex = 0.6,xlab="",sub="", main = "Single Linkage")
+singlLCut <- cutree(single, 3)
+
+#confusion matrix
+CMsingle<-table(mat_poordf$G.vero,singlLCut,dnn=c("G Vero","G stimato"))
+
+#Indice entropia
+library(entropy)
+e1<-entropy(CMsingle[1,], method = "ML")
+e2<-entropy(CMsingle[2,], method = "ML")
+e3<-entropy(CMsingle[3,], method = "ML")
+Entropia<-c(e1,e2,e3)
+em<-mean(Entropia)
+```
+
+```{r 2singleresult, echo=FALSE}
+Table1 <-cbind(CMsingle,Entropia)
+Table1.1<-rbind(Table1,em)
+colnames(Table1.1)<-c("G^1","G^2","G^3","Entropia")
+rownames(Table1.1)<-c("GruppoA","GruppoB","GruppoC","Entropia Media")
+print(Table1.1)
+```
+
+#### 2.1.2 Complete Link
+```{r 2complete}
+compL<-hclust(dp, method = "complete", members=NULL)
+plot(compL, hang = -1, cex = 0.6,xlab="",sub="", main = "Complete Linkage")
+compLLCut <- cutree(compL, 3)
+
+#confusion matrix
+CMcomplete<-table(mat_poordf$G.vero,compLLCut,dnn=c("G Vero","G stimato"))
+
+#Indice entropia
+ec1<-entropy(CMcomplete[1,], method = "ML")
+ec2<-entropy(CMcomplete[2,], method = "ML")
+ec3<-entropy(CMcomplete[3,], method = "ML")
+Entropia<-c(ec1,ec2,ec3)
+ecm<-mean(Entropia)
+```
+
+```{r 2completeresult, echo=FALSE}
+Table1 <-cbind(CMcomplete,Entropia)
+Table1.1<-rbind(Table1,ecm)
+colnames(Table1.1)<-c("G^1","G^2","G^3","Entropia")
+rownames(Table1.1)<-c("GruppoA","GruppoB","GruppoC","Entropia Media")
+print(Table1.1)
+```
+
+#### 2.1.3 Ward
+```{r 2ward}
+Ward<-hclust(dp, method = "ward.D", members=NULL)
+plot(Ward, hang = -1, cex = 0.6,xlab="",sub="", main = "Ward Linkage")
+WardCut <- cutree(Ward, 3)
+
+#confusion matrix
+CMWard<-table(mat_poordf$G.vero,WardCut,dnn=c("G Vero","G stimato"))
+
+#Indice entropia
+ew1<-entropy(CMWard[1,], method = "ML")
+ew2<-entropy(CMWard[2,], method = "ML")
+ew3<-entropy(CMWard[3,], method = "ML")
+Entropia<-c(ew1,ew2,ew3)
+ewm<-mean(Entropia)
+```
+
+```{r 2cwardresult, echo=FALSE}
+Table1 <-cbind(CMWard,Entropia)
+Table1.1<-rbind(Table1,ewm)
+colnames(Table1.1)<-c("G^1","G^2","G^3","Entropia")
+rownames(Table1.1)<-c("GruppoA","GruppoB","GruppoC","Entropia Media")
+print(Table1.1)
+```
+
+#### 2.1.4 Group Average
+```{r 2gavg}
+average<-hclust(dp, method = "average", members=NULL)
+plot(average, hang = -1, cex = 0.6,xlab="",sub="", main = "Average Linkage")
+avgCut <- cutree(average, 3)
+
+#confusion matrix
+CMavg<-table(mat_poordf$G.vero,avgCut,dnn=c("G Vero","G stimato"))
+
+#Indice entropia
+ea1<-entropy(CMavg[1,], method = "ML")
+ea2<-entropy(CMavg[2,], method = "ML")
+ea3<-entropy(CMavg[3,], method = "ML")
+Entropia<-c(ea1,ea2,ea3)
+eam<-mean(Entropia)
+```
+
+```{r 2avgresult, echo=FALSE}
+Table1 <-cbind(CMavg,Entropia)
+Table1.1<-rbind(Table1,eam)
+colnames(Table1.1)<-c("G^1","G^2","G^3","Entropia")
+rownames(Table1.1)<-c("GruppoA","GruppoB","GruppoC","Entropia Media")
+print(Table1.1)
+```
+
+### 2.2 METODI NON GERARCHICI
+
+#### 2.2.1 Criterio K-Means: k pari a 3 e criterio silhouette
+```{r 2kmeans}
+library (cluster)
+set.seed(18)
+kmeans_clus3<-kmeans(dp,3)
+
+### criterio silhouette 
+dista2<-dp^2 # sum((x_i - y_i)^2)
+plot(silhouette(kmeans_clus3$cluster,dista2), col = c("blue","red","green"), main="Silhouette K-means K= 3")
+
+#confusion matrix
+CMKM<-table(mat_poordf$G.vero,kmeans_clus3$cluster,dnn=c("G Vero","G stimato"))
+
+#Indice entropia
+e3k1<-entropy(CMKM[1,], method = "ML")
+e3k2<-entropy(CMKM[2,], method = "ML")
+e3k3<-entropy(CMKM[3,], method = "ML")
+Entropia<-c(e3k1,e3k2,e3k3)
+e3km<-mean(Entropia)
+```
+
+```{r 2kmeans3result, echo=FALSE}
+Table1 <-cbind(CMKM,Entropia)
+Table1.1<-rbind(Table1,e3km)
+colnames(Table1.1)<-c("G^1","G^2","G^3","Entropia")
+rownames(Table1.1)<-c("GruppoA","GruppoB","GruppoC","Entropia Media")
+print(Table1.1)
+```
+
+#### 2.2.2 Criterio K-Means: scelta del numero dei gruppi e criterio silhouette
+```{r 2kmeansk}
+library(fpc)
+set.seed(12)
+kmeans_clusk<-kmeansruns(dp, krange=2:7,iter.max=1000,criterion='asw')
+plot(silhouette(kmeans_clusk$cluster,dista2), col = c("blue","red","green"), main="Silhouette K-Means")
+
+#confusion matrix
+CMKK<-table(mat_poordf$G.vero,kmeans_clusk$cluster,dnn=c("G Vero","G stimato"))
+
+#Indice entropia
+ekk1<-entropy(CMKK[1,], method = "ML")
+ekk2<-entropy(CMKK[2,], method = "ML")
+ekk3<-entropy(CMKK[3,], method = "ML")
+Entropia<-c(ekk1,ekk2,ekk3)
+ekkm<-mean(Entropia)
+```
+
+```{r 2kmeanskresult, echo=FALSE}
+Table1 <-cbind(CMKK,Entropia)
+Table1.1<-rbind(Table1,ekkm)
+colnames(Table1.1)<-c("G^1","G^2","G^3","Entropia")
+rownames(Table1.1)<-c("GruppoA","GruppoB","GruppoC","Entropia Media")
+print(Table1.1)
+```
+
+#### 2.2.2 Criterio Pam: k pari a 3 e criterio silhouette
+```{r 2pam3}
+library(fpc)
+set.seed(22)
+pam3<-pam(dp, 3, stand=T,trace=1)
+plot(silhouette(pam3$cluster,dista2), col = c("blue","red","green"), main="Silhouette Pam K= 3")
+
+#confusion matrix
+CMPAM3<-table(mat_poordf$G.vero,pam3$cluster,dnn=c("G Vero","G stimato"))
+
+#Indice entropia
+e3p1<-entropy(CMPAM3[1,], method = "ML")
+e3p2<-entropy(CMPAM3[2,], method = "ML")
+e3p3<-entropy(CMPAM3[3,], method = "ML")
+Entropia<-c(e3p1,e3p2,e3p3)
+e3pm<-mean(Entropia)
+```
+
+```{r 2pam3result, echo=FALSE}
+Table1 <-cbind(CMPAM3,Entropia)
+Table1.1<-rbind(Table1,e3pm)
+colnames(Table1.1)<-c("G^1","G^2","G^3","Entropia")
+rownames(Table1.1)<-c("GruppoA","GruppoB","GruppoC","Entropia Media")
+print(Table1.1)
+```
+
+#### 2.2.2 Criterio Pam: selezione numero cluster k e criterio silhouette
+```{r 2pamk, echo=FALSE}
+set.seed(18)
+pam_k<-pamk(dp, scaling=T,krange=2:6, criterion="asw")
+plot(silhouette(pam_k$pamobject$clustering,dista2), col = c("blue","red"), main="Silhouette Pam K")
+
+#confusion matrix
+CMPAM_K<-table(mat_poordf$G.vero,pam_k$pamobject$clustering,dnn=c("G Vero","G stimato"))
+
+#Indice entropia
+library(entropy)
+ekp1<-entropy(CMPAM_K[1,], method = "ML")
+ekp2<-entropy(CMPAM_K[2,], method = "ML")
+ekp3<-entropy(CMPAM_K[3,], method = "ML")
+Entropia<-c(ekp1,ekp2,ekp3)
+ekpm<-mean(Entropia)
+```
+
+```{r 2pamkresult, echo=FALSE}
+Table1 <-cbind(CMPAM_K,Entropia)
+Table1.1<-rbind(Table1,ekpm)
+colnames(Table1.1)<-c("G^1","G^2","Entropia")
+rownames(Table1.1)<-c("GruppoA","GruppoB","GruppoC", "Entropia Media")
+print(Table1.1)
+```
+
+#### 2.3 Confronto fra risultati: metodi gerarchici, K-Means, Pam
+
+Nel *data-set* assegnato, dove alcune delle unità osservate non sono univocamente attribuibili a cluster distinti, cambia anche l'accuratezza della validità di diversi metodi di classificazione gerarchica e non gerarchica.
+
+Tra i metodi gerarchici utilizzati nell'apprendimento, il migliore risulta il Single Link (minimizzazione della dissimilarità inter-cluster) che "sbaglia" di poco con un indice di entropia medio di 0,0665. Gli altri criteri (Complete Link, Ward e Average) presentano un indice di entropia compreso tra 0,36 e 0,50, cogliendo la dissimilarità un po' meno correttamente ma comunque validamente.
+
+
+I criteri di classificazione non gerarchica K-Means e Pam, con la scelta arbitraria o meno del valore K, classificano quasi correttamente le unità nei gruppi veri del data set assegnato, eccezione fatta per il criterio Pam senza K arbitrario che alloca quasi tutte le unità del terzo gruppo nel primo (G^1)
+L'indice medio di entropia calcolato sui due criteri di classificazione non gerarchica è pari rispettivamente 0,32 per il K-Means e 0,25 per il Pam con K=3; l'indice di Silhouette medio è di 0,60 circa mentre per il criterio Pam senza K arbitrario è di 0,52.
+
+-------
+
+
+## 3.CLUSTER ALLUNGATI
+
+```{r clusall, echo=FALSE}
+### CLUSTER ALLUNGATI
+set.seed(123);
+n=40
+      ma=8; mb=0;
+      a=rnorm(n)*6+ma;
+      b=rnorm(n)+mb;
+      ma=6; mb=8;  
+      a<-c(a,rnorm(n)*6+ma)
+      b<-c(b,b=rnorm(n)+mb)
+         x=a-b;
+         y=a+b;
+mat_lunghi<-cbind(c(rep(1,n),rep(2,n)),x,y)
+colnames(mat_lunghi)<-c('G-vero','x','y')
+plot(x,y,pch=19,col=mat_lunghi[,1])
+mat_lunghidf<-data.frame(mat_lunghi)
+
+#dissimilarity matrix
+va<-mat_lunghidf[,2:3]
+da<-dist(va,method = "euclidean")
+```
+
+-------------------------
+
+### 3.1 METODI GERARCHICI
+
+#### 3.1.1 Single Link
+```{r 3single}
+single<-hclust(da, method = "single", members=NULL)
+single
+plot(single, hang = -1, cex = 0.6,xlab="",sub="", main = "Single Linkage")
+singlLCut <- cutree(single, 2)
+
+#confusion matrix
+CMsingle<-table(mat_lunghidf$G.vero,singlLCut,dnn=c("G Vero","G stimato"))
+
+#Indice entropia
+library(entropy)
+e1<-entropy(CMsingle[1,], method = "ML")
+e2<-entropy(CMsingle[2,], method = "ML")
+Entropia<-c(e1,e2)
+em<-mean(Entropia)
+```
+
+```{r 3singleresult, echo=FALSE}
+Table1 <-cbind(CMsingle,Entropia)
+Table1.1<-rbind(Table1,em)
+colnames(Table1.1)<-c("G^1","G^2","Entropia")
+rownames(Table1.1)<-c("GruppoA","GruppoB","Entropia Media")
+print(Table1.1)
+```
+
+#### 3.1.2 Complete Link
+```{r 3complete}
+compL<-hclust(da, method = "complete", members=NULL)
+plot(compL, hang = -1, cex = 0.6,xlab="",sub="", main = "Complete Linkage")
+compLLCut <- cutree(compL, 2)
+
+#confusion matrix
+CMcomplete<-table(mat_lunghidf$G.vero,compLLCut,dnn=c("G Vero","G stimato"))
+
+#Indice entropia
+ec1<-entropy(CMcomplete[1,], method = "ML")
+ec2<-entropy(CMcomplete[2,], method = "ML")
+Entropia<-c(ec1,ec2)
+ecm<-mean(Entropia)
+```
+
+```{r 3completeresult, echo=FALSE}
+Table1 <-cbind(CMcomplete,Entropia)
+Table1.1<-rbind(Table1,ecm)
+colnames(Table1.1)<-c("G^1","G^2","Entropia")
+rownames(Table1.1)<-c("GruppoA","GruppoB","Entropia Media")
+print(Table1.1)
+```
+
+#### 3.1.3 Ward
+```{r 3ward}
+Ward<-hclust(da, method = "ward.D", members=NULL)
+plot(Ward, hang = -1, cex = 0.6,xlab="",sub="", main = "Ward Linkage")
+WardCut <- cutree(Ward, 2)
+
+#confusion matrix
+CMWard<-table(mat_lunghidf$G.vero,WardCut,dnn=c("G Vero","G stimato"))
+
+#Indice entropia
+ew1<-entropy(CMWard[1,], method = "ML")
+ew2<-entropy(CMWard[2,], method = "ML")
+Entropia<-c(ew1,ew2)
+ewm<-mean(ew1,ew2)
+```
+
+```{r 3cwardresult, echo=FALSE}
+Table1 <-cbind(CMWard,Entropia)
+Table1.1<-rbind(Table1,ewm)
+colnames(Table1.1)<-c("G^1","G^2","Entropia")
+rownames(Table1.1)<-c("GruppoA","GruppoB","Entropia Media")
+print(Table1.1)
+```
+
+#### 3.1.4 Group Average
+```{r 3gavg}
+average<-hclust(da, method = "average", members=NULL)
+plot(average, hang = -1, cex = 0.6,xlab="",sub="", main = "Average Linkage")
+avgCut <- cutree(average, 2)
+
+#confusion matrix
+CMavg<-table(mat_lunghidf$G.vero,avgCut,dnn=c("G Vero","G stimato"))
+
+#Indice entropia
+ea1<-entropy(CMavg[1,], method = "ML")
+ea2<-entropy(CMavg[2,], method = "ML")
+Entropia<-c(ea1,ea2)
+eam<-mean(Entropia)
+```
+
+```{r 3avgresult, echo=FALSE}
+Table1 <-cbind(CMavg,Entropia)
+Table1.1<-rbind(Table1,eam)
+colnames(Table1.1)<-c("G^1","G^2","Entropia")
+rownames(Table1.1)<-c("GruppoA","GruppoB","Entropia Media")
+print(Table1.1)
+```
+
+### 3.2 METODI NON GERARCHICI
+
+#### 3.2.1 Criterio K-Means: k pari a 2 e criterio silhouette
+```{r 3kmeans}
+library (cluster)
+set.seed(16)
+kmeans_clus2<-kmeans(da,2)
+
+### criterio silhouette
+dista2<-da^2 # sum((x_i - y_i)^2)
+plot(silhouette(kmeans_clus2$cluster,dista2), col = c("blue","green"), main="Silhouette K-Means K= 2")
+
+#confusion matrix
+CMKM<-table(mat_lunghidf$G.vero,kmeans_clus2$cluster,dnn=c("G Vero","G stimato"))
+
+#Indice entropia
+e3k1<-entropy(CMKM[1,], method = "ML")
+e3k2<-entropy(CMKM[2,], method = "ML")
+Entropia<-c(e3k1,e3k2)
+e2km<-mean(Entropia)
+```
+
+```{r 3kmeans2result, echo=FALSE}
+Table1 <-cbind(CMKM,Entropia)
+Table1.1<-rbind(Table1,e2km)
+colnames(Table1.1)<-c("G^1","G^2","Entropia")
+rownames(Table1.1)<-c("GruppoA","GruppoB","Entropia Media")
+print(Table1.1)
+```
+
+#### 3.2.2 Criterio K-Means: scelta del numero dei gruppi e criterio silhouette
+```{r 3kmeansk}
+library(fpc)
+set.seed(18)
+kmeans_clusk<-kmeansruns(da, krange=2:7,iter.max=1000,criterion='asw')
+plot(silhouette(kmeans_clusk$cluster,dista2), col = c("blue","red","green","yellow","grey","orange","pink"), main="Silhouette K-Means")
+
+#confusion matrix
+CMKK<-table(mat_lunghidf$G.vero,kmeans_clusk$cluster,dnn=c("G Vero","G stimato"))
+
+#Indice entropia
+ekk1<-entropy(CMKK[1,], method = "ML")
+ekk2<-entropy(CMKK[2,], method = "ML")
+Entropia<-c(ekk1,ekk2)
+ekkm<-mean(Entropia)
+```
+
+```{r 3kmeanskresult, echo=FALSE}
+Table1 <-cbind(CMKK,Entropia)
+Table1.1<-rbind(Table1,ekkm)
+colnames(Table1.1)<-c("G^1","G^2","G^3","G^4","G^5","G^6","G^7","Entropia")
+rownames(Table1.1)<-c("GruppoA","GruppoB","Entropia Media")
+print(Table1.1)
+```
+
+#### 3.2.2 Criterio Pam: k pari a 2 e criterio silhouette
+```{r 3pam3}
+library(fpc)
+set.seed(12)
+pam3<-pam(da, 2, stand=T,trace=1)
+plot(silhouette(pam3$cluster,dista2), col = c("blue","yellow"),main="Silhouette Pam k=3")
+
+#confusion matrix
+CMPAM3<-table(mat_lunghidf$G.vero,pam3$cluster,dnn=c("G Vero","G stimato"))
+
+#Indice entropia
+e3p1<-entropy(CMPAM3[1,], method = "ML")
+e3p2<-entropy(CMPAM3[2,], method = "ML")
+Entropia<-c(e3p1,e3p2)
+e3pm<-mean(Entropia)
+```
+
+```{r 3pam3result, echo=FALSE}
+Table1 <-cbind(CMPAM3,Entropia)
+Table1.1<-rbind(Table1,e3pm)
+colnames(Table1.1)<-c("G^1","G^2","Entropia")
+rownames(Table1.1)<-c("GruppoA","GruppoB","Entropia Media")
+print(Table1.1)
+```
+
+#### 3.2.2 Criterio Pam: selezione numero cluster k e criterio silhouette
+```{r 3pamk, echo=FALSE}
+set.seed(22)
+pam_k<-pamk(da, scaling=T,krange=2:6, criterion="asw")
+plot(silhouette(pam_k$pamobject$clustering,dista2), col = c("blue","red"), main="Silhouette Pam K")
+
+#confusion matrix
+CMPAM_K<-table(mat_lunghidf$G.vero,pam_k$pamobject$clustering,dnn=c("G Vero","G stimato"))
+
+#Indice entropia
+library(entropy)
+ekp1<-entropy(CMPAM_K[1,], method = "ML")
+ekp2<-entropy(CMPAM_K[2,], method = "ML")
+Entropia<-c(ekp1,ekp2)
+ekpm<-mean(Entropia)
+```
+
+```{r 3pamkresult, echo=FALSE}
+Table1 <-cbind(CMPAM_K,Entropia)
+Table1.1<-rbind(Table1,ekpm)
+colnames(Table1.1)<-c("G^1","G^2","Entropia")
+rownames(Table1.1)<-c("GruppoA","GruppoB","Entropia Media")
+print(Table1.1)
+```
+
+### 3.3 Confronto fra risultati: metodi gerarchici, K-Means, Pam
+Nel *data-set* assegnato le unità osservate sono allocate in due gruppi abbastanza separati ma che presentano una simile tendenza di linearità positiva; anche in questo caso cambia l'accuratezza della validità di diversi metodi di classificazione gerarchica e non gerarchica.
+
+Tra i metodi gerarchici, il migliore ad "apprendere" risulta il criterio Single Link (entropia media pari a 0,1 ma anche gli altri criteri allocano pressoché correttamente le unità nei gruppi veri.
+
+
+I criteri di classificazione non gerarchica K-Means e Pam, classificano le unità nei gruppi veri con meno accuratezza, ma sempre con un elevato grado di accettabilità (indice di entropia media compreso tra 0,50-0,60 e indice di silhouette di 0,55 circa).
+Differente il caso dell'adozione del criterio K-Means con K non assegnato, che alloca le unità appartenenti ai due gruppi veri in sette cluster distinti (Indice di entropia media di 1,34 e silhouette di 0,62).
+
+
+
+------------------------
+## 4.ALTRI CLUSTER
+
+```{r clusaltri, echo=FALSE}
+### ALTRI CLUSTER
+set.seed(12);
+n<-100
+i<-1:n
+         a=i*.0628319;
+         x=cos(a)+(i>50)+rnorm(n)*.1;
+         y=sin(a)+(i>50)*.3+rnorm(n)*.1;
+mat_nconv<-cbind(c(rep(1,n/2),rep(2,n/2)),x,y)
+colnames(mat_nconv)<-c('G-vero','x','y')
+plot(x,y,pch=19,col=mat_nconv[,1])
+mat_nconvdf<-data.frame(mat_nconv)
+
+#dissimilarity matrix
+c<-mat_nconvdf[,2:3]
+dc<- dist(c,method = "euclidean")
+```
+
+### 4.1 METODI GERARCHICI
+
+#### 4.1.1 Single Link
+```{r 4single}
+single<-hclust(dc, method = "single", members=NULL)
+single
+plot(single, hang = -1, cex = 0.6,xlab="",sub="", main = "Single Linkage")
+singlLCut <- cutree(single, 2)
+
+#confusion matrix
+CMsingle<-table(mat_nconvdf$G.vero,singlLCut,dnn=c("G Vero","G stimato"))
+
+#Indice entropia
+library(entropy)
+e1<-entropy(CMsingle[1,], method = "ML")
+e2<-entropy(CMsingle[2,], method = "ML")
+Entropia<-c(e1,e2)
+em<-mean(e1,e2)
+```
+
+```{r 4singleresult, echo=FALSE}
+Table1 <-cbind(CMsingle,Entropia)
+Table1.1<-rbind(Table1,em)
+colnames(Table1.1)<-c("G^1","G^2","Entropia")
+rownames(Table1.1)<-c("GruppoA","GruppoB","Entropia Media")
+print(Table1.1)
+```
+
+#### 4.1.2 Complete Link
+```{r 4complete}
+compL<-hclust(dc, method = "complete", members=NULL)
+plot(compL, hang = -1, cex = 0.6,xlab="",sub="", main = "Complete Linkage")
+compLLCut <- cutree(compL, 2)
+
+#confusion matrix
+CMcomplete<-table(mat_nconvdf$G.vero,compLLCut,dnn=c("G Vero","G stimato"))
+
+#Indice entropia
+ec1<-entropy(CMcomplete[1,], method = "ML")
+ec2<-entropy(CMcomplete[2,], method = "ML")
+Entropia<-c(ec1,ec2)
+ecm<-mean(Entropia)
+```
+
+```{r 4completeresult, echo=FALSE}
+Table1 <-cbind(CMcomplete,Entropia)
+Table1.1<-rbind(Table1,ecm)
+colnames(Table1.1)<-c("G^1","G^2","Entropia")
+rownames(Table1.1)<-c("GruppoA","GruppoB","Entropia Media")
+print(Table1.1)
+```
+
+#### 4.1.3 Ward
+```{r 4ward}
+Ward<-hclust(dc, method = "ward.D", members=NULL)
+plot(Ward, hang = -1, cex = 0.6,xlab="",sub="", main = "Ward Linkage")
+WardCut <- cutree(Ward, 2)
+
+#confusion matrix
+CMWard<-table(mat_nconvdf$G.vero,WardCut,dnn=c("G Vero","G stimato"))
+
+#Indice entropia
+ew1<-entropy(CMWard[1,], method = "ML")
+ew2<-entropy(CMWard[2,], method = "ML")
+Entropia<-c(ew1,ew2)
+ewm<-mean(Entropia)
+```
+
+```{r 4cwardresult, echo=FALSE}
+Table1 <-cbind(CMWard,Entropia)
+Table1.1<-rbind(Table1,ewm)
+colnames(Table1.1)<-c("G^1","G^2","Entropia")
+rownames(Table1.1)<-c("GruppoA","GruppoB","Entropia Media")
+print(Table1.1)
+```
+
+#### 4.1.4 Group Average
+```{r 4gavg}
+average<-hclust(dc, method = "average", members=NULL)
+plot(average, hang = -1, cex = 0.6,xlab="",sub="", main = "Average Linkage")
+avgCut <- cutree(average, 2)
+
+#confusion matrix
+CMavg<-table(mat_nconvdf$G.vero,avgCut,dnn=c("G Vero","G stimato"))
+
+#Indice entropia
+ea1<-entropy(CMavg[1,], method = "ML")
+ea2<-entropy(CMavg[2,], method = "ML")
+Entropia<-c(ea1,ea2)
+eam<-mean(Entropia)
+```
+
+```{r 4avgresult, echo=FALSE}
+Table1 <-cbind(CMavg,Entropia)
+Table1.1<-rbind(Table1,eam)
+colnames(Table1.1)<-c("G^1","G^2","Entropia")
+rownames(Table1.1)<-c("GruppoA","GruppoB","Entropia Media")
+print(Table1.1)
+```
+
+### 4.2 METODI NON GERARCHICI
+
+#### 4.2.1 Criterio K-Means: k pari a 2 e criterio silhouette
+```{r 4kmeans}
+library (cluster)
+set.seed(1806)
+kmeans_clus2<-kmeans(dc,2)
+
+### criterio silhouette  ## validazione
+dista2<-dc^2 # sum((x_i - y_i)^2)
+plot(silhouette(kmeans_clus2$cluster,dista2), col = c("green","yellow"), main="Silhouette K-Means K= 2")
+
+#confusion matrix
+CMKM<-table(mat_nconvdf$G.vero,kmeans_clus2$cluster,dnn=c("G Vero","G stimato"))
+
+#Indice entropia
+e3k1<-entropy(CMKM[1,], method = "ML")
+e3k2<-entropy(CMKM[2,], method = "ML")
+Entropia<-c(e3k1,e3k2)
+e3km<-mean(Entropia)
+```
+
+```{r 4kmeans2result, echo=FALSE}
+Table1 <-cbind(CMKM,Entropia)
+Table1.1<-rbind(Table1,e3km)
+colnames(Table1.1)<-c("G^1","G^2","Entropia")
+rownames(Table1.1)<-c("GruppoA","GruppoB","Entropia Media")
+print(Table1.1)
+```
+
+#### 4.2.2 Criterio K-Means: scelta del numero dei gruppi e criterio silhouette
+```{r 4kmeansk}
+library(fpc)
+set.seed(1)
+kmeans_clusk<-kmeansruns(dc, krange=2:7,iter.max=1000,criterion='asw')
+plot(silhouette(kmeans_clusk$cluster,dista2), col = c("blue","red","green","yellow","grey","orange"), main="Silhouette K-Means")
+
+#confusion matrix
+CMKK<-table(mat_nconvdf$G.vero,kmeans_clusk$cluster,dnn=c("G Vero","G stimato"))
+CMKK
+#Indice entropia
+ekk1<-entropy(CMKK[1,], method = "ML")
+ekk2<-entropy(CMKK[2,], method = "ML")
+Entropia<-c(ekk1,ekk2)
+ekkm<-mean(Entropia)
+```
+
+```{r 4kmeanskresult, echo=FALSE}
+Table1 <-cbind(CMKK,Entropia)
+Table1.1<-rbind(Table1,ekkm)
+colnames(Table1.1)<-c("G^1","G^2","G^3","G^4","G^5","G^6","Entropia")
+rownames(Table1.1)<-c("GruppoA","GruppoB","Entropia Media")
+print(Table1.1)
+```
+
+#### 4.2.2 Criterio Pam: k pari a 2 e criterio silhouette
+```{r 4pam3}
+library(fpc)
+set.seed(18)
+pam3<-pam(dc, 2, stand=T,trace=1)
+plot(silhouette(pam3$cluster,dista2), col = c("blue","orange"), main="Silhouette Pam K=2")
+
+#confusion matrix
+CMPAM3<-table(mat_nconvdf$G.vero,pam3$cluster,dnn=c("G Vero","G stimato"))
+
+#Indice entropia
+e3p1<-entropy(CMPAM3[1,], method = "ML")
+e3p2<-entropy(CMPAM3[2,], method = "ML")
+Entropia<-c(e3p1,e3p2)
+e3pm<-mean(Entropia)
+```
+
+```{r 4pam3result, echo=FALSE}
+Table1 <-cbind(CMPAM3,Entropia)
+Table1.1<-rbind(Table1,e3pm)
+colnames(Table1.1)<-c("G^1","G^2","Entropia")
+rownames(Table1.1)<-c("GruppoA","GruppoB","Entropia Media")
+print(Table1.1)
+```
+
+#### 4.2.2 Criterio Pam: selezione numero cluster k e criterio silhouette
+```{r 4pamk, echo=FALSE}
+set.seed(22)
+pam_k<-pamk(dc, scaling=T,krange=2:6, criterion="asw")
+plot(silhouette(pam_k$pamobject$clustering,dista2), col = c("blue","green"), main="Silhouette Pam K")
+
+#confusion matrix
+CMPAM_K<-table(mat_nconvdf$G.vero,pam_k$pamobject$clustering,dnn=c("G Vero","G stimato"))
+
+#Indice entropia
+library(entropy)
+ekp1<-entropy(CMPAM_K[1,], method = "ML")
+ekp2<-entropy(CMPAM_K[2,], method = "ML")
+Entropia<-c(ekp1,ekp2)
+ekpm<-mean(Entropia)
+```
+
+```{r 4pamkresult, echo=FALSE}
+Table1 <-cbind(CMPAM_K,Entropia)
+Table1.1<-rbind(Table1,ekpm)
+colnames(Table1.1)<-c("G^1","G^2","Entropia")
+rownames(Table1.1)<-c("GruppoA","GruppoB","Entropia Media")
+print(Table1.1)
+```
+### 4.3 Confronto fra risultati: metodi gerarchici, K-Means, Pam
+
+Nel *data-set* assegnato, le unità osservate sono allocate in due gruppi abbastanza separati ma che presentano una tendenza alla convessità rispettivamente positiva e negativa.
+
+Tra i metodi gerarchici, il migliore ad "apprendere" risulta sempre il criterio Single Link che alloca esattamente le unità nei due cluster veri (entropia media pari a 0); gli altri criteri gerarchici non allocano correttamente le unità nei gruppi veri e presentano un indice medio di entropia compreso tra 0,32 e 0,38.
+
+I criteri di classificazione non gerarchica K-Means e Pam, classificano le unità nei gruppi veri con buona accuratezza (indice di entropia media compreso tra 0,40-0,52 e indice di Silhouette intorno a 0,65).
+Differente il caso, come già osservato nel *data-set* di cui al Par 3.1, dell'adozione del criterio K-Means con K non assegnato, che alloca le unità appartenenti ai due gruppi veri in sei cluster distinti (Indice di entropia media di 1,1 ma con Silhouette di 0,7).
+
+
+```{bash}
+```
